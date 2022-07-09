@@ -16,8 +16,11 @@ class UserStorage {
 		return userInfo;
 	}
 
-	static getUsers(...fields) {
-		// const users = this.#users;
+	static #getUsers(data, isAll, fields) {
+		// 파일 시스템에서 반환되는 것은 buffer 파일이기 때문에 파싱을 해준다.
+		const users = JSON.parse(data);
+		if (isAll) return users;
+
 		const newUsers = fields.reduce((newUsers, field) => {
 			if (users.hasOwnProperty(field)) {
 				newUsers[field] = users[field];
@@ -26,6 +29,15 @@ class UserStorage {
 		}, {});
 		console.log(newUsers);
 		return newUsers;
+	}
+
+	static getUsers(isAll, ...fields) {
+		return fs
+			.readFile("./src/database/users.json")
+			.then((data) => {
+				return this.#getUsers(data, isAll, fields);
+			})
+			.catch(console.log);
 	}
 
 	static getUserInfo(id) {
@@ -37,11 +49,19 @@ class UserStorage {
 			.catch(console.log);
 	}
 
-	static save(userInfo) {
-		// const users = this.#users;
+	static async save(userInfo) {
+		const users = await this.getUsers(true);
+
+		if (users.id.includes(userInfo.id)) {
+			// return new Error("이미 존재하는 아아디입니다.");
+			// 라고 해주면  User.register() 메소드에서 error를 감지하지 못 한다.
+			throw "이미 존재하는 아아디입니다.";
+		}
+
 		users.id.push(userInfo.id);
 		users.name.push(userInfo.name);
 		users.password.push(userInfo.password);
+		fs.writeFile("./src/database/users.json", JSON.stringify(users));
 		return { success: true };
 	}
 
